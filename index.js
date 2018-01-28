@@ -101,7 +101,13 @@ function checkHosts() {
                         health.unhealthyEvent()
                         return
                     }
-    
+                    
+                    if ( reading == 1  && name == 'Dryer' ) {
+                        logging.info('reading of 1 for: registerData: ' + JSON.stringify(registerData))
+                        logging.info('reading of 1 for: data: ' + JSON.stringify(data))
+                        return
+                    }
+
                     client.smartPublish(topic_prefix + '/' + name.toString(), reading.toString())
                 })
 

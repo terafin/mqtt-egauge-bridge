@@ -2,20 +2,27 @@ const mqtt = require('mqtt')
 const _ = require('lodash')
 const logging = require('homeautomation-js-lib/logging.js')
 const repeat = require('repeat')
-const bodyParser = require('body-parser')
 const health = require('homeautomation-js-lib/health.js')
 const request = require('request')
 var parseString = require('xml2js').parseString
 
 require('homeautomation-js-lib/mqtt_helpers.js')
 
+
+const fix_name = function(str) {
+	str = str.replace(/[+\\&*%$#@!]/g, '')
+	str = str.replace(/\s/g, '_').trim().toLowerCase()
+	str = str.replace(/__/g, '_')
+	return str
+}
+
 // Config
 var topic_prefix = process.env.TOPIC_PREFIX
 var egauge_hosts = process.env.EGAUGE_HOSTS.toString().split(',')
 
 if (_.isNil(topic_prefix)) {
-    logging.warn('TOPIC_PREFIX not set, not starting')
-    process.abort()
+	logging.warn('TOPIC_PREFIX not set, not starting')
+	process.abort()
 }
 
 var mqttOptions = {}
@@ -23,105 +30,107 @@ var mqttOptions = {}
 var shouldRetain = process.env.MQTT_RETAIN
 
 if (_.isNil(shouldRetain)) {
-    shouldRetain = false
+	shouldRetain = false
 }
 
 if (!_.isNil(shouldRetain)) {
-    mqttOptions['retain'] = shouldRetain
+	mqttOptions['retain'] = shouldRetain
 }
 
 
 var connectedEvent = function() {
-    health.healthyEvent()
+	health.healthyEvent()
 }
 
 var disconnectedEvent = function() {
-    health.unhealthyEvent()
+	health.unhealthyEvent()
 }
 
 // Setup MQTT
 const client = mqtt.setupClient(connectedEvent, disconnectedEvent)
 
 
-function query_egauge_host(host, callback) {
-    const urlSuffix = '/cgi-bin/egauge?inst'
-    const url = 'http://' + host + urlSuffix
-    logging.info('eGauge request url: ' + url)
+const query_egauge_host = function(host, callback) {
+	const urlSuffix = '/cgi-bin/egauge?inst'
+	const url = 'http://' + host + urlSuffix
+	logging.info('eGauge request url: ' + url)
 
-    request.get({ url: url, json: true },
-        function(err, httpResponse, body) {
-            logging.debug('url:' + url)
-            logging.debug('error:' + err)
-            logging.debug('httpResponse:' + httpResponse)
-            logging.debug('body:' + body)
+	request.get({url: url, json: true},
+		function(err, httpResponse, body) {
+			logging.debug('url:' + url)
+			logging.debug('error:' + err)
+			logging.debug('httpResponse:' + httpResponse)
+			logging.debug('body:' + body)
 
-            if (callback !== null && callback !== undefined) {
-                callback(err, body)
-            }
-        })
+			if (callback !== null && callback !== undefined) {
+				return callback(err, body)
+			}
+		})
 }
 
-function checkHosts() {
-    egauge_hosts.forEach(host => {
-        query_egauge_host(host, function(err, result) {
-            if ( !_.isNil(err) ) {
-                health.unhealthyEvent()
-                return
-            }
+const checkHosts = function() {
+	var fullJSON = {}
 
-            parseString(result, function (err, result) {
-                if ( _.isNil(result.data) ) {
-                    health.unhealthyEvent()
-                    return
-                }
+	egauge_hosts.forEach(host => {
+		query_egauge_host(host, function(err, result) {
+			if ( !_.isNil(err) ) {
+				health.unhealthyEvent()
+				return
+			}
 
-                if ( _.isNil(result.data.r) ) {
-                    health.unhealthyEvent()
-                    return
-                }
+			parseString(result, function(err, result) {
+				if ( _.isNil(result.data) ) {
+					health.unhealthyEvent()
+					return
+				}
 
-                const data = result.data.r
+				if ( _.isNil(result.data.r) ) {
+					health.unhealthyEvent()
+					return
+				}
 
-                Object.keys(data).forEach(register => {
-                    const registerData = data[register]['$']
-                    const reading = data[register]['i']
-                    const name = registerData.n
+				const data = result.data.r
 
-                    if ( _.isNil(registerData) ) {
-                        health.unhealthyEvent()
-                        return
-                    }
+				Object.keys(data).forEach(register => {
+					const registerData = data[register]['$']
+					const reading = data[register]['i']
+					const name = registerData.n
+
+					if ( _.isNil(registerData) ) {
+						health.unhealthyEvent()
+						return
+					}
     
-                    if ( _.isNil(reading) ) {
-                        health.unhealthyEvent()
-                        return
-                    }
+					if ( _.isNil(reading) ) {
+						health.unhealthyEvent()
+						return
+					}
     
-                    if ( _.isNil(name) ) {
-                        health.unhealthyEvent()
-                        return
-                    }
+					if ( _.isNil(name) ) {
+						health.unhealthyEvent()
+						return
+					}
                     
-                    if ( reading == 1  && name == 'Dryer' ) {
-                        logging.info('reading of 1 for: registerData: ' + JSON.stringify(registerData))
-                        logging.info('reading of 1 for: data: ' + JSON.stringify(data))
-                        return
-                    }
+					if ( reading == 1  && name == 'Dryer' ) {
+						logging.info('reading of 1 for: registerData: ' + JSON.stringify(registerData))
+						logging.info('reading of 1 for: data: ' + JSON.stringify(data))
+						return
+					}
 
-                    client.smartPublish(topic_prefix + '/' + name.toString(), reading.toString())
-                })
+					fullJSON[fix_name(name)] = reading[0]
+					client.smartPublish(topic_prefix + '/' + name.toString(), reading.toString())
+				})
 
-                health.healthyEvent()
-            })
-            
-        })
-    })
+				health.healthyEvent()            
+			})
+		})
+	})
 }
 
 
-function startHostCheck() {
-    logging.info('Starting to monitor: ' + JSON.stringify(egauge_hosts))
-    repeat(checkHosts).every(1, 's').start.in(1, 'sec')
+const startHostCheck = function() {
+	logging.info('Starting to monitor: ' + JSON.stringify(egauge_hosts))
+	repeat(checkHosts).every(1, 's').start.in(1, 'sec')
 }
 
 startHostCheck()

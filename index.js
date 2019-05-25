@@ -5,8 +5,7 @@ const repeat = require('repeat')
 const health = require('homeautomation-js-lib/health.js')
 const request = require('request')
 var parseString = require('xml2js').parseString
-
-require('homeautomation-js-lib/mqtt_helpers.js')
+const mqtt_helpers = require('homeautomation-js-lib/mqtt_helpers.js')
 
 
 const fix_name = function(str) {
@@ -47,7 +46,7 @@ var disconnectedEvent = function() {
 }
 
 // Setup MQTT
-const client = mqtt.setupClient(connectedEvent, disconnectedEvent)
+const client = mqtt_helpers.setupClient(connectedEvent, disconnectedEvent)
 
 
 const query_egauge_host = function(host, callback) {

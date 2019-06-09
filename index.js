@@ -7,10 +7,12 @@ const request = require('request')
 var parseString = require('xml2js').parseString
 const mqtt_helpers = require('homeautomation-js-lib/mqtt_helpers.js')
 
-
 const fix_name = function(str) {
 	str = str.replace(/[+\\&*%$#@!]/g, '')
-	str = str.replace(/\s/g, '_').trim().toLowerCase()
+	str = str
+		.replace(/\s/g, '_')
+		.trim()
+		.toLowerCase()
 	str = str.replace(/__/g, '_')
 	return str
 }
@@ -36,7 +38,6 @@ if (!_.isNil(shouldRetain)) {
 	mqttOptions['retain'] = shouldRetain
 }
 
-
 var connectedEvent = function() {
 	health.healthyEvent()
 }
@@ -48,23 +49,21 @@ var disconnectedEvent = function() {
 // Setup MQTT
 const client = mqtt_helpers.setupClient(connectedEvent, disconnectedEvent)
 
-
 const query_egauge_host = function(host, callback) {
 	const urlSuffix = '/cgi-bin/egauge?inst'
 	const url = 'http://' + host + urlSuffix
 	logging.info('eGauge request url: ' + url)
 
-	request.get({url: url, json: true},
-		function(err, httpResponse, body) {
-			logging.debug('url:' + url)
-			logging.debug('error:' + err)
-			logging.debug('httpResponse:' + httpResponse)
-			logging.debug('body:' + body)
+	request.get({url: url, json: true}, function(err, httpResponse, body) {
+		logging.debug('url:' + url)
+		logging.debug('error:' + err)
+		logging.debug('httpResponse:' + httpResponse)
+		logging.debug('body:' + body)
 
-			if (callback !== null && callback !== undefined) {
-				return callback(err, body)
-			}
-		})
+		if (callback !== null && callback !== undefined) {
+			return callback(err, body)
+		}
+	})
 }
 
 const checkHosts = function() {
@@ -72,18 +71,18 @@ const checkHosts = function() {
 
 	egauge_hosts.forEach(host => {
 		query_egauge_host(host, function(err, result) {
-			if ( !_.isNil(err) ) {
+			if (!_.isNil(err)) {
 				health.unhealthyEvent()
 				return
 			}
 
 			parseString(result, function(err, result) {
-				if ( _.isNil(result.data) ) {
+				if (_.isNil(result.data)) {
 					health.unhealthyEvent()
 					return
 				}
 
-				if ( _.isNil(result.data.r) ) {
+				if (_.isNil(result.data.r)) {
 					health.unhealthyEvent()
 					return
 				}
@@ -95,41 +94,47 @@ const checkHosts = function() {
 					const reading = data[register]['i']
 					const name = registerData.n
 
-					if ( _.isNil(registerData) ) {
+					if (_.isNil(registerData)) {
 						health.unhealthyEvent()
 						return
 					}
-    
-					if ( _.isNil(reading) ) {
+
+					if (_.isNil(reading)) {
 						health.unhealthyEvent()
 						return
 					}
-    
-					if ( _.isNil(name) ) {
+
+					if (_.isNil(name)) {
 						health.unhealthyEvent()
 						return
 					}
-                    
-					if ( reading == 1  && name == 'Dryer' ) {
-						logging.info('reading of 1 for: registerData: ' + JSON.stringify(registerData))
+
+					if (reading == 1 && name == 'Dryer') {
+						logging.info(
+							'reading of 1 for: registerData: ' + JSON.stringify(registerData)
+						)
 						logging.info('reading of 1 for: data: ' + JSON.stringify(data))
 						return
 					}
 
 					fullJSON[fix_name(name)] = reading[0]
-					client.smartPublish(topic_prefix + '/' + name.toString(), reading.toString())
+					client.smartPublish(
+						topic_prefix + '/' + name.toString(),
+						reading.toString()
+					)
 				})
 
-				health.healthyEvent()            
+				health.healthyEvent()
 			})
 		})
 	})
 }
 
-
 const startHostCheck = function() {
 	logging.info('Starting to monitor: ' + JSON.stringify(egauge_hosts))
-	repeat(checkHosts).every(1, 's').start.in(1, 'sec')
+	repeat(checkHosts)
+		.every(1, 's')
+		.start.in(1, 'sec')
 }
 
 startHostCheck()

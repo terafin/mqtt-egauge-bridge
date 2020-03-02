@@ -1,30 +1,30 @@
 {
-    "name": "mqtt-egauge-bridge",
-    "version": "1.0.0",
-    "description": "",
-    "main": "index.js",
-    "scripts": {
-        "start": "node index.js"
-    },
-    "repository": {
-        "type": "git",
-        "url": "https://github.com/terafin/mqtt-egauge-bridge.git"
-    },
-    "author": "Justin Wood",
-    "license": "MIT",
-    "bugs": {
-        "url": "https://github.com/terafin/mqtt-egauge-bridge/issues"
-    },
-    "dependencies": {
-        "homeautomation-js-lib": "https://github.com/terafin/homeautomation-js-lib.git",
-        "lodash": "^4.17.15",
-        "mqtt": "latest",
-        "repeat": "0.0.6",
-        "request": "latest",
-        "xml2js": "0.4.23"
-    },
-    "engines": {
-        "node": ">=4"
-    },
-    "homepage": "https://github.com/terafin/mqtt-egauge-bridge#readme"
+  "name": "mqtt-egauge-bridge",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/terafin/mqtt-egauge-bridge.git"
+  },
+  "author": "Justin Wood",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/terafin/mqtt-egauge-bridge/issues"
+  },
+  "dependencies": {
+    "homeautomation-js-lib": "https://github.com/terafin/homeautomation-js-lib.git",
+    "lodash": "^4.17.15",
+    "mqtt": "latest",
+    "repeat": "0.0.6",
+    "request": "latest",
+    "xml2js": "0.4.23"
+  },
+  "engines": {
+    "node": ">=4"
+  },
+  "homepage": "https://github.com/terafin/mqtt-egauge-bridge#readme"
 }

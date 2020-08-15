@@ -20,7 +20,7 @@
         "lodash": "latest",
         "mqtt": "latest",
         "interval-promise": "latest",
-        "request": "latest",
+        "got": "latest",
         "xml2js": "latest"
     },
     "engines": {

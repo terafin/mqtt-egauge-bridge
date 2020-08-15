@@ -3,7 +3,7 @@ const _ = require('lodash')
 const logging = require('homeautomation-js-lib/logging.js')
 const interval = require('interval-promise')
 const health = require('homeautomation-js-lib/health.js')
-const request = require('request')
+const got = require('got')
 var parseString = require('xml2js').parseString
 const mqtt_helpers = require('homeautomation-js-lib/mqtt_helpers.js')
 
@@ -49,21 +49,24 @@ var disconnectedEvent = function() {
 // Setup MQTT
 const client = mqtt_helpers.setupClient(connectedEvent, disconnectedEvent)
 
-const query_egauge_host = function(host, callback) {
-    const urlSuffix = '/cgi-bin/egauge?inst'
+async function query_egauge_host(host, callback) {
+    const urlSuffix = '/cgi-bin/egauge?inst&tot'
     const url = 'http://' + host + urlSuffix
     logging.info('eGauge request url: ' + url)
+    var error = null
+    var body = null
 
-    request.get({ url: url, json: true }, function(err, httpResponse, body) {
-        logging.debug('url:' + url)
-        logging.debug('error:' + err)
-        logging.debug('httpResponse:' + httpResponse)
-        logging.debug('body:' + body)
+    try {
+        const response = await got.get(url)
+        body = response.body
+    } catch (e) {
+        logging.error('failed querying host: ' + e)
+        error = e
+    }
 
-        if (callback !== null && callback !== undefined) {
-            return callback(err, body)
-        }
-    })
+    if (!_.isNil(callback)) {
+        return callback(error, body)
+    }
 }
 
 const checkHosts = function() {

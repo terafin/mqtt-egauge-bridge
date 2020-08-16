@@ -69,9 +69,63 @@ async function query_egauge_host(host, callback) {
     }
 }
 
-const checkHosts = function() {
-    var fullJSON = {}
+var runningDatapoints = {}
+var skippedReadings = {}
+const maxDataPoints = 5
 
+const addDatapointForRegister = function(register, datapoint) {
+    var array = runningDatapoints[register]
+    if (_.isNil(array)) {
+        array = []
+    }
+
+    array.push(Number(datapoint))
+
+    if (array.length > maxDataPoints) {
+        array = array.slice(1, maxDataPoints + 1)
+    }
+
+    runningDatapoints[register] = array
+}
+
+const numberOfDatapointsForRegister = function(register) {
+    const array = runningDatapoints[register]
+    if (_.isNil(array)) {
+        return 0
+    }
+
+    return array.length
+}
+
+const averageOfRegister = function(register) {
+    const datapoints = runningDatapoints[register]
+    var total = 0;
+
+    for (var i = 0; i < datapoints.length; i++) {
+        total += datapoints[i];
+    }
+
+    return total / datapoints.length;
+}
+
+const setSkipReading = function(register, skipped) {
+    if (skipped)
+        skippedReadings[register] = true
+    else
+        delete skippedReadings[register]
+}
+
+const skippedReading = function(register) {
+    const found = skippedReadings[register]
+
+    if (!_.isNil(found)) {
+        return true
+    }
+
+    return false
+}
+
+const checkHosts = function() {
     egauge_hosts.forEach(host => {
         query_egauge_host(host, function(err, result) {
             if (!_.isNil(err)) {
@@ -112,11 +166,33 @@ const checkHosts = function() {
                         return
                     }
 
-                    fullJSON[fix_name(name)] = reading[0]
-                    client.smartPublish(
-                        topic_prefix + '/' + name.toString(),
-                        reading.toString()
-                    )
+                    var skip_reading = false
+                    const datapoints = numberOfDatapointsForRegister(name)
+
+                    if (reading == 1 && skippedReading(name) == false) {
+                        if (datapoints >= maxDataPoints) {
+                            const average = averageOfRegister(name)
+                            if (average < -5 || average > 5) {
+                                logging.debug('******* SKIPPING WEIRD ' + reading + ' READING FOR: ' + name + ' average was: ' + average)
+                                skip_reading = true
+                                setSkipReading(name, true)
+                            }
+                        }
+                    } else if (skippedReading(name) == true) {
+                        const average = averageOfRegister(name)
+                        logging.debug('average for register (' + name + '): ' + average + '   new reading is: ' + reading)
+                        if (reading > (average * 1.8)) {
+                            logging.debug('****** SKIPPING [HIGH] WEIRD ' + reading + ' READING FOR: ' + name + ' average was: ' + average)
+                            skip_reading = true
+                        }
+                        setSkipReading(name, false)
+                    }
+
+                    if (!skip_reading) {
+                        setSkipReading(name, skip_reading)
+                        addDatapointForRegister(name, reading)
+                        client.smartPublish(topic_prefix + '/' + name.toString(), reading.toString())
+                    }
                 })
 
                 health.healthyEvent()

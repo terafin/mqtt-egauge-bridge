@@ -3,13 +3,13 @@
 This is a simple docker container that I use to bridge to/from my MQTT bridge.
 
 I have a collection of bridges, and the general format of these begins with these environment variables:
+
 ```
       TOPIC_PREFIX: /your_topic_prefix  (eg: /some_topic_prefix/somthing)
       MQTT_HOST: YOUR_MQTT_URL (eg: mqtt://mqtt.yourdomain.net)
       (OPTIONAL) MQTT_USER: YOUR_MQTT_USERNAME
       (OPTIONAL) MQTT_PASS: YOUR_MQTT_PASSWORD
-````
-
+```
 
 Here's an example docker compose:
 
@@ -17,7 +17,7 @@ Here's an example docker compose:
 version: '3.3'
 services:
   mqtt-egauge-bridge:
-    image: terafin/mqtt-egauge-bridge:latest
+    image: ghcr.io/terafin/mqtt-egauge-bridge:latest
     environment:
       LOGGING_NAME: mqtt-egauge-bridge
       TZ: America/Los_Angeles
